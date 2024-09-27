@@ -127,7 +127,7 @@ top_trans_filtered <- top_trans %>%
 
 ggplot(top_trans_filtered, aes(x = CNPJ, y = total_empenhado_milhoes)) +
         geom_bar(stat = "identity", fill = "steelblue") +
-        facet_wrap(~ ano) +
+        facet_wrap(~ ano, scales = "free_y" ) +
         labs(
                 title = "Total Empenhado (Milhões) por CNPJ por Ano",
                 x = "CNPJ",
@@ -138,3 +138,79 @@ ggplot(top_trans_filtered, aes(x = CNPJ, y = total_empenhado_milhoes)) +
                 axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
                 strip.text = element_text(size = 12, face = "bold")
         )
+
+
+########################################3
+##CALCULANDO NUMERO DE OSCS, MEDIAS E MEDIANAS DAS PARCERIAS FEDERAIS
+#####################################
+
+transf_media <- dbGetQuery(con,"WITH total_transfer_per_cnpj AS (
+    SELECT 
+        nr_orcamento_ano,
+        nr_orcamento_cnpj,
+        SUM(nr_vl_empenhado_def) AS total_transfer
+    FROM 
+        public.tb_orcamento_def_v3
+    where nr_orcamento_cnpj != 28719664000124
+    GROUP BY 
+        nr_orcamento_ano, 
+        nr_orcamento_cnpj
+)
+SELECT 
+    nr_orcamento_ano,
+    COUNT(nr_orcamento_cnpj) AS total_cnpjs,
+    ROUND(AVG(total_transfer)) AS valor_medio_transferencias,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_transfer)) AS valor_mediano_transferencias
+FROM 
+    total_transfer_per_cnpj
+GROUP BY 
+    nr_orcamento_ano
+ORDER BY 
+    nr_orcamento_ano ASC;")
+
+# finalizar conexão com o servidor (banco de dados)
+dbDisconnect(con)
+
+write.csv2(transf_media, "data/transf_media.csv",  fileEncoding = "UTF-8")
+
+head(transf_media)
+
+transf_media <- transf_media %>%
+        rename(ano = nr_orcamento_ano
+               )
+
+##total de OSCs que receberam recursos por ano
+g_num_osc <- ggplot(data = transf_media, aes(x = ano, y = total_cnpjs)) +
+                            geom_line() +
+                            geom_point() +
+labs(
+        title = "Total de OSCs que receberam recursos federais, por ano (2001-2023)",
+        x = "Ano",
+        y = "Total de OSCs (i.e. CNPJs únicos)") +
+        theme_classic()
+
+##valor médio das transferencias federais, por CNPJ
+g_transf_media <- ggplot(data = transf_media, aes(x = ano, y = valor_medio_transferencias)) +
+        geom_line() +
+        geom_point() +
+        labs(
+                title = "Valor médio dos valores transferidos por CNPJ, por ano (2001-2023)",
+                x = "Ano",
+                y = "Valor Médio Transferido (em R$)"
+        ) +
+        theme_classic() +
+        scale_y_continuous(labels = scales::comma)  # Remover notação científica e adicionar separador de milhar
+
+
+###Valores medianos transferidos, por CNPJ
+##valor médio das transferencias federais, por CNPJ
+g_transf_mediana <- ggplot(data = transf_media, aes(x = ano, y = valor_mediano_transferencias)) +
+        geom_line() +
+        geom_point() +
+        labs(
+                title = "Valor mediano dos valores transferidos por CNPJ, por ano (2001-2023)",
+                x = "Ano",
+                y = "Valor Mediano Transferido (em R$)"
+        ) +
+        theme_classic() +
+        scale_y_continuous(labels = scales::comma)  # Remover notação científica e adicionar separador de milhar
