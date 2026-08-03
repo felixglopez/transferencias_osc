@@ -2,12 +2,20 @@
 # instalação do pacote RPostgres
 library("RPostgres")
 library(DBI)
-# conectar ao banco de dados
-con <- dbConnect(RPostgres::Postgres(),dbname = 'portal_osc2', 
-                 host = 'psql12', 
+
+# conexão ao banco interno do Ipea (rede Ipea/VPN obrigatória).
+# host, banco, usuário e senha vêm de variáveis de ambiente, nunca do código.
+# defina-as uma vez em ~/.Renviron (fora do repositório):
+#   IPEA_DB_HOST=psql12
+#   IPEA_DB_NAME=portal_osc2
+#   IPEA_DB_USER=seu_usuario
+#   IPEA_DB_PASSWORD=sua_senha
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = Sys.getenv("IPEA_DB_NAME"),
+                 host = Sys.getenv("IPEA_DB_HOST"),
                  port = 5432,
-                 user = 'r1705296',
-                 password = '')
+                 user = Sys.getenv("IPEA_DB_USER"),
+                 password = Sys.getenv("IPEA_DB_PASSWORD"))
 #nota: incluir o comando bigint = ‘integer’ (con <- dbConnect(RPostgres::Postgres(),dbname = 'siape', bigint = 'integer',) evita o formato integer64 que o ggplot nao reconhece.
 
 # realizar consulta
