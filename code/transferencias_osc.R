@@ -2,6 +2,10 @@
 # instalação do pacote RPostgres
 library("RPostgres")
 library(DBI)
+library(dplyr)
+library(ggplot2)
+library(scales)
+
 # conectar ao banco de dados
 con <- dbConnect(RPostgres::Postgres(),dbname = 'portal_osc2', 
                  host = 'psql12', 
@@ -28,7 +32,7 @@ dbDisconnect(con)
 
 # para salvar o resultado da consulta em formato .csv
 # a função é write.csv2(tabela, "nomedatabela.csv", fileEncoding = "UTF-8").  # Lembrar de definir a pasta de trabalho (ctrl+shift+h) antes. É nela que a   # tabela será salva.A função salva automaticamente com o ";" como separador.  # Exemplo:
-write.csv2(res,"data/transferencia_osc.csv", fileEncoding = "UTF-8")
+transferencia <- read.csv2("data/transferencia_osc.csv", fileEncoding = "UTF-8")
 
 transferencia <- res
 
@@ -38,9 +42,6 @@ transferencia <- transferencia %>%
         dplyr::rename(ano = nr_orcamento_ano,
                       total = sum)
 
-library(dplyr)
-library(ggplot2)
-library(scales)
 
 #convertendo os valores para bilhões
 transferencia <- transferencia %>%
@@ -102,6 +103,8 @@ dbDisconnect(con)
 # a função é write.csv2(tabela, "nomedatabela.csv", fileEncoding = "UTF-8").  # Lembrar de definir a pasta de trabalho (ctrl+shift+h) antes. É nela que a   # tabela será salva.A função salva automaticamente com o ";" como separador.  # Exemplo:
 write.csv2(res,"data/top_transferencia_osc.csv", fileEncoding = "UTF-8")
 
+top_trans <- read.csv2("data/top_transferencia_osc.csv", fileEncoding = "UTF-8")
+
 top_trans <-  res 
 
 #renomeando a variavel
@@ -110,24 +113,26 @@ top_trans <-  top_trans %>%
                CNPJ = nr_orcamento_cnpj)
 
 
-top_trans  <- top_trans %>% 
+top_trans  <- top_trans %>%
         mutate(total_empenhado_milhoes = round(total_empenhado/1000000))
 
-               
+top_trans <- top_trans[top_trans$total_empenhado_milhoes != 39544, ]
+
+        
+head(top_trans)
 
 #grafico para reportar os maiores valores por ano
 # Converter CNPJ para character
 top_trans$CNPJ <- as.character(top_trans$CNPJ)
 
-top_trans_filtered <- top_trans %>%
-        filter(ano != c(2001, 2021)) %>% 
-        group_by(ano) %>%
-        top_n(5, wt = total_empenhado_milhoes)
+# top_trans_filtered <- top_trans %>%
+#         group_by(ano) %>%
+#         top_n(5, wt = total_empenhado_milhoes)
 
 
-ggplot(top_trans_filtered, aes(x = CNPJ, y = total_empenhado_milhoes)) +
+ggplot(top_trans, aes(x = CNPJ, y = total_empenhado_milhoes)) +
         geom_bar(stat = "identity", fill = "steelblue") +
-        facet_wrap(~ ano) +
+        facet_wrap(~ ano, scales = "free_y") +
         labs(
                 title = "Total Empenhado (Milhões) por CNPJ por Ano",
                 x = "CNPJ",
